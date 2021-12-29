@@ -1,3 +1,5 @@
 /Debug/
 /bin/
-
+.project
+.cproject
+.settings/

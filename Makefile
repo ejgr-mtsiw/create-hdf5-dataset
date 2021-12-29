@@ -1,15 +1,15 @@
-CC				:= clang
+CC			:= clang
 CPPFLAGS		:= -Wall -Wextra -Werror -pedantic-errors
-LDFLAGS			:= -L/usr/lib -lm -lhdf5
+LDFLAGS			:= -L/usr/lib -L/usr/local/lib -lm -lhdf5
 BUILD			:= ./bin
 OBJ_DIR			:= $(BUILD)/objects
 APP_DIR			:= $(BUILD)
 TARGET			:= create-hdf5-dataset
-INCLUDE			:= -Iinclude/
-SRC				:= $(wildcard src/*.c)
+INCLUDE			:= -Iinclude/ -I/usr/local/include/
+SRC			:= $(wildcard src/*.c)
 
 OBJECTS			:= $(SRC:%.c=$(OBJ_DIR)/%.o)
-DEPENDENCIES	:= $(OBJECTS:.o=.d)
+DEPENDENCIES		:= $(OBJECTS:.o=.d)
 
 all: build $(APP_DIR)/$(TARGET)
 
