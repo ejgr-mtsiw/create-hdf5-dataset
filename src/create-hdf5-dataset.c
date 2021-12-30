@@ -7,96 +7,18 @@
  */
 
 #include <clargs.h>
+#include "dataset.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "hdf5.h"
 #include <limits.h>
 
-#define VALID_DIMENSIONS 0
-#define INVALID_DIMENSIONS 1
-
-/**
- * How many bits in a long?
- */
-size_t get_number_of_bits_in_a_long() {
-	return sizeof(unsigned long int) * CHAR_BIT;
-}
-
-/**
- * Calculates the dataset dimensions based on the number
- * of observations and attributes
- */
-int calculate_dataset_dimensions(clargs *args, hsize_t *dataset_dimensions) {
-
-	// How many bits in a long?
-	size_t nbits = get_number_of_bits_in_a_long();
-
-	// check for invalid dimensions
-	if (args->n_observations < 1 || args->n_attributes < 1) {
-		return INVALID_DIMENSIONS;
-	}
-
-	/**
-	 * Create a 2D dataspace
-	 * Set dataspace dimension
-	 * Number of lines = number of observations
-	 * Number of columns = number of attributes + 1 (for class)
-	 * TODO: should be n more depending on the number of classes
-	 */
-	// https://stackoverflow.com/questions/2745074/fast-ceiling-of-an-integer-division-in-c-c
-	unsigned long int ncols = (args->n_attributes + 1) / nbits + ((args->n_attributes + 1) % nbits != 0);
-
-	dataset_dimensions[0] = args->n_observations;
-	dataset_dimensions[1] = ncols;
-
-	return VALID_DIMENSIONS;
-}
-
 /**
  * Fills the buffer with a random line of 0 and 1
+ * TODO: Support more than 2 classes
  */
-void fill_buffer(clargs *args, hsize_t ncols, unsigned long int *buffer) {
-	/**
-	 * Probability of getting '1'
-	 * TODO: replace placeholder code
-	 */
-	int probability = RAND_MAX / 100 * args->probability_attribute_set;
-	size_t nbits = get_number_of_bits_in_a_long();
-
-	unsigned long int column = 0;
-	char class_set = 0;
-
-	for (unsigned long int i = 0; i < ncols; i++) {
-
-		buffer[i] = 0;
-		class_set = 0;
-		column = 0;
-
-		for (size_t j = 0; j < nbits; j++) {
-
-			buffer[i] <<= 1;
-
-			if (column < args->n_attributes) {
-				// Filling attributes
-				if (random() < probability) {
-					buffer[i] += 1;
-				}
-			} else {
-				// first time here? Fill in the class
-				if (class_set == 0) {
-					class_set = 1;
-
-					// TODO: support more than 2 classes
-					if (random() < probability) {
-						buffer[i] += 1;
-					}
-				}
-
-			}
-		}
-	}
-}
-
+void fill_buffer(hsize_t n_cols, unsigned long n_attributes,/* int n_classes,*/int probability_attribute_set,
+		unsigned long *buffer);
 
 /**
  *
@@ -134,6 +56,11 @@ int main(int argc, char **argv) {
 	hid_t memory_space_id = 0;
 
 	/**
+	 * Store the result of operations
+	 */
+	herr_t status = 0;
+
+	/**
 	 * Dataset dimensions
 	 */
 	hsize_t dataset_dimensions[2] = { 0, 0 };
@@ -146,7 +73,7 @@ int main(int argc, char **argv) {
 	/**
 	 * Buffer to store one line/chunk of data
 	 */
-	unsigned long int *buffer = NULL;
+	unsigned long *buffer = NULL;
 
 	/**
 	 * Parse command line arguments
@@ -166,7 +93,8 @@ int main(int argc, char **argv) {
 	}
 	fprintf(stdout, " - Empty file created.\n");
 
-	if (calculate_dataset_dimensions(&args, dataset_dimensions) == INVALID_DIMENSIONS) {
+	if (calculate_dataset_dimensions(args.n_observations, args.n_attributes,
+			dataset_dimensions) == DATASET_INVALID_DIMENSIONS) {
 		// Invalid dimensions
 		fprintf(stdout, " - Invalid dataset dimensions!\n");
 		return EXIT_FAILURE;
@@ -193,9 +121,10 @@ int main(int argc, char **argv) {
 	}
 
 	// Create the dataset
-	dataset_id = H5Dcreate2(file_id, args.datasetname, H5T_NATIVE_ULONG, dataset_space_id, H5P_DEFAULT,
-			property_list_id, H5P_DEFAULT);
+	dataset_id = H5Dcreate2(file_id, args.datasetname, H5T_STD_U64BE, dataset_space_id, H5P_DEFAULT, property_list_id,
+	H5P_DEFAULT);
 	fprintf(stdout, " - Dataset created.\n");
+	fprintf(stdout, " - Starting filling in dataset.\n");
 
 	// Close resources
 	H5Pclose(property_list_id);
@@ -204,13 +133,13 @@ int main(int argc, char **argv) {
 	memory_space_id = H5Screate_simple(2, chunk_dimensions, NULL);
 
 	// Alocate buffer
-	buffer = (unsigned long int*) malloc(sizeof(unsigned long int) * chunk_dimensions[1]);
+	buffer = (unsigned long*) malloc(sizeof(unsigned long) * chunk_dimensions[1]);
 
 	// We will write one line at a time
-	hsize_t count[2] = { 1, dataset_dimensions[1] };
+	hsize_t count[2] = { 1, chunk_dimensions[1] };
 	hsize_t offset[2] = { 0, 0 };
 
-	for (unsigned long int line = 0; line < args.n_observations; line++) {
+	for (unsigned long line = 0; line < args.n_observations; line++) {
 
 		// Update offset
 		offset[0] = line;
@@ -219,19 +148,38 @@ int main(int argc, char **argv) {
 		H5Sselect_hyperslab(dataset_space_id, H5S_SELECT_SET, offset, NULL, count, NULL);
 
 		// Create a data line
-		fill_buffer(&args, chunk_dimensions[1], buffer);
+		fill_buffer(chunk_dimensions[1], args.n_attributes, /* args.n_classes,*/args.probability_attribute_set, buffer);
 
 		// Write buffer to dataset
 		// mem_space and file_space should now have the same number of elements selected
 		H5Dwrite(dataset_id, H5T_NATIVE_ULONG, memory_space_id, dataset_space_id, H5P_DEFAULT, buffer);
+
 		if (line % 100 == 0) {
 			fprintf(stdout, " - Writing [%lu/%lu]\n", line, args.n_observations);
 		}
 	}
 
 	free(buffer);
-	H5Sclose(dataset_space_id);
 	H5Sclose(memory_space_id);
+	H5Sclose(dataset_space_id);
+
+	// Set dataset properties
+
+	status = write_attribute(dataset_id, "n_classes", H5T_NATIVE_INT, &args.n_classes);
+	if (status < 0) {
+		return EXIT_FAILURE;
+	}
+
+	status = write_attribute(dataset_id, "n_attributes", H5T_NATIVE_ULONG, &args.n_attributes);
+	if (status < 0) {
+		return EXIT_FAILURE;
+	}
+
+	status = write_attribute(dataset_id, "n_observations", H5T_NATIVE_ULONG, &args.n_observations);
+	if (status < 0) {
+		return EXIT_FAILURE;
+	}
+
 	H5Dclose(dataset_id);
 	H5Fclose(file_id);
 
@@ -239,3 +187,48 @@ int main(int argc, char **argv) {
 
 	return EXIT_SUCCESS;
 }
+
+/**
+ * Fills the buffer with a random line of 0 and 1
+ */
+void fill_buffer(hsize_t n_cols, unsigned long n_attributes,/* int n_classes,*/int probability_attribute_set,
+		unsigned long *buffer) {
+	/**
+	 * Probability of getting '1'
+	 * TODO: replace placeholder code
+	 */
+	int probability = RAND_MAX / 100 * probability_attribute_set;
+
+	unsigned long column = 0;
+	char class_set = 0;
+
+	for (unsigned long i = 0; i < n_cols; i++) {
+
+		buffer[i] = 0;
+		class_set = 0;
+		column = 0;
+
+		for (size_t j = 0; j < BITS_IN_A_LONG; j++) {
+
+			buffer[i] <<= 1;
+
+			if (column < n_attributes) {
+				// Filling attributes
+				if (random() < probability) {
+					buffer[i] += 1;
+				}
+			} else {
+				// first time here? Fill in the class
+				if (class_set == 0) {
+					class_set = 1;
+
+					// TODO: support more than 2 classes
+					if (random() < probability) {
+						buffer[i] += 1;
+					}
+				}
+			}
+		}
+	}
+}
+
