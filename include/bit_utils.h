@@ -15,6 +15,9 @@
  */
 #define LONG_BITS (CHAR_BIT * sizeof (unsigned long))
 
-#define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
+/**
+ *
+ */
+#define CHECK_BIT(var,pos) !!(((var) >> (pos)) & 1)
 
 #endif
