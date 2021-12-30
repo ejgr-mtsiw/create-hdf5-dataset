@@ -12,23 +12,28 @@
  * Calculates the dataset dimensions based on the number
  * of observations and attributes
  */
-int calculate_dataset_dimensions(unsigned long n_observations, unsigned long n_attributes, /*int n_classes,*/
-hsize_t *dataset_dimensions) {
+int calculate_dataset_dimensions(unsigned long n_observations, unsigned long n_attributes, int n_classes,
+		hsize_t *dataset_dimensions) {
 
 	// check for invalid dimensions
 	if (n_observations < 1 || n_attributes < 1) {
 		return DATASET_INVALID_DIMENSIONS;
 	}
 
+	// How many bits are needed to store the class?
+	int n_bits_for_classes = (int) ceil(log2(n_classes));
+
+	unsigned int n_bits_in_a_long = 64;//get_number_of_bits_in_a_long();
+
 	/**
 	 * Create a 2D dataspace
 	 * Set dataspace dimension
 	 * Number of lines = number of observations
-	 * Number of columns = number of attributes + 1 (for class)
-	 * TODO: should be n more depending on the number of classes
+	 * Number of columns = number of attributes + n bits for class
 	 */
 	// https://stackoverflow.com/questions/2745074/fast-ceiling-of-an-integer-division-in-c-c
-	unsigned long n_cols = (n_attributes + 1) / BITS_IN_A_LONG + ((n_attributes + 1) % BITS_IN_A_LONG != 0);
+	unsigned long total_bits = n_attributes + n_bits_for_classes;
+	unsigned long n_cols = total_bits / n_bits_in_a_long + (total_bits % n_bits_in_a_long != 0);
 
 	dataset_dimensions[0] = n_observations;
 	dataset_dimensions[1] = n_cols;

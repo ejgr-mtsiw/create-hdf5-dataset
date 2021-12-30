@@ -6,18 +6,20 @@
  ============================================================================
  */
 
-#include <clargs.h>
+#include "bit_utils.h"
+#include "clargs.h"
 #include "dataset.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "hdf5.h"
-#include <limits.h>
+#include <math.h>
+#include <time.h>
 
 /**
  * Fills the buffer with a random line of 0 and 1
  * TODO: Support more than 2 classes
  */
-void fill_buffer(hsize_t n_cols, unsigned long n_attributes,/* int n_classes,*/int probability_attribute_set,
+void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes, int probability_attribute_set,
 		unsigned long *buffer);
 
 /**
@@ -75,6 +77,10 @@ int main(int argc, char **argv) {
 	 */
 	unsigned long *buffer = NULL;
 
+	// Seed the random number generator
+	// TODO: we could read the seed from the command line?
+	srand((unsigned) time(NULL));
+
 	/**
 	 * Parse command line arguments
 	 */
@@ -93,7 +99,7 @@ int main(int argc, char **argv) {
 	}
 	fprintf(stdout, " - Empty file created.\n");
 
-	if (calculate_dataset_dimensions(args.n_observations, args.n_attributes,
+	if (calculate_dataset_dimensions(args.n_observations, args.n_attributes, args.n_classes,
 			dataset_dimensions) == DATASET_INVALID_DIMENSIONS) {
 		// Invalid dimensions
 		fprintf(stdout, " - Invalid dataset dimensions!\n");
@@ -148,7 +154,7 @@ int main(int argc, char **argv) {
 		H5Sselect_hyperslab(dataset_space_id, H5S_SELECT_SET, offset, NULL, count, NULL);
 
 		// Create a data line
-		fill_buffer(chunk_dimensions[1], args.n_attributes, /* args.n_classes,*/args.probability_attribute_set, buffer);
+		fill_buffer(chunk_dimensions[1], args.n_attributes, args.n_classes, args.probability_attribute_set, buffer);
 
 		// Write buffer to dataset
 		// mem_space and file_space should now have the same number of elements selected
@@ -191,7 +197,7 @@ int main(int argc, char **argv) {
 /**
  * Fills the buffer with a random line of 0 and 1
  */
-void fill_buffer(hsize_t n_cols, unsigned long n_attributes,/* int n_classes,*/int probability_attribute_set,
+void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes, int probability_attribute_set,
 		unsigned long *buffer) {
 	/**
 	 * Probability of getting '1'
@@ -199,36 +205,45 @@ void fill_buffer(hsize_t n_cols, unsigned long n_attributes,/* int n_classes,*/i
 	 */
 	int probability = RAND_MAX / 100 * probability_attribute_set;
 
+	// What class will this line be?
+	int line_class = rand() % n_classes;
+
+	// How many bits are needed to store the class?
+	int class_bits_to_set = (int) ceil(log2(n_classes));
+
+	unsigned int n_bits_in_a_long = 64; //get_number_of_bits_in_a_long();
+
 	unsigned long column = 0;
-	char class_set = 0;
 
 	for (unsigned long i = 0; i < n_cols; i++) {
 
 		buffer[i] = 0;
-		class_set = 0;
-		column = 0;
 
-		for (size_t j = 0; j < BITS_IN_A_LONG; j++) {
+		for (size_t j = 0; j < n_bits_in_a_long; j++) {
 
 			buffer[i] <<= 1;
 
 			if (column < n_attributes) {
-				// Filling attributes
-				if (random() < probability) {
+				// Filling in attributes
+				if (rand() < probability) {
 					buffer[i] += 1;
 				}
 			} else {
-				// first time here? Fill in the class
-				if (class_set == 0) {
-					class_set = 1;
+				// Filling in the class
+				if (class_bits_to_set > 0) {
+					class_bits_to_set--;
 
-					// TODO: support more than 2 classes
-					if (random() < probability) {
+					if (get_nth_bit(line_class, class_bits_to_set) == 1) {
 						buffer[i] += 1;
 					}
+				} else {
+					// We're done here: fast forward!
+					buffer[i] <<= (n_bits_in_a_long - 1 - j);
+					break;
 				}
 			}
+
+			column++;
 		}
 	}
 }
-

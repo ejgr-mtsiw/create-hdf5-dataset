@@ -6,13 +6,12 @@
  Description : Structures and functions to manage command line arguments
  ============================================================================
  */
+#ifndef CL_ARGS_H
+#define CL_ARGS_H
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-#ifndef __CL_ARGS_INCLUDE__
-#define __CL_ARGS_INCLUDE__
 
 /**
  * Number of classes to generate by default
@@ -55,7 +54,7 @@
 /**
  * Structure to store command line options
  */
-typedef struct {
+typedef struct clargs {
 	/**
 	 * The name of the file to store the dataset
 	 */
