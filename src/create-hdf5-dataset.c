@@ -211,7 +211,7 @@ void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes, int 
 	// How many bits are needed to store the class?
 	int class_bits_to_set = (int) ceil(log2(n_classes));
 
-	unsigned int n_bits_in_a_long = 64; //get_number_of_bits_in_a_long();
+	unsigned int n_bits_in_a_long = get_number_of_bits_in_a_long();
 
 	unsigned long column = 0;
 

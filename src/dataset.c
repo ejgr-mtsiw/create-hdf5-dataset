@@ -23,7 +23,7 @@ int calculate_dataset_dimensions(unsigned long n_observations, unsigned long n_a
 	// How many bits are needed to store the class?
 	int n_bits_for_classes = (int) ceil(log2(n_classes));
 
-	unsigned int n_bits_in_a_long = 64;//get_number_of_bits_in_a_long();
+	unsigned int n_bits_in_a_long = get_number_of_bits_in_a_long();
 
 	/**
 	 * Create a 2D dataspace
