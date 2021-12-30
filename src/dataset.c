@@ -23,8 +23,6 @@ int calculate_dataset_dimensions(unsigned long n_observations, unsigned long n_a
 	// How many bits are needed to store the class?
 	int n_bits_for_classes = (int) ceil(log2(n_classes));
 
-	unsigned int n_bits_in_a_long = get_number_of_bits_in_a_long();
-
 	/**
 	 * Create a 2D dataspace
 	 * Set dataspace dimension
@@ -33,7 +31,7 @@ int calculate_dataset_dimensions(unsigned long n_observations, unsigned long n_a
 	 */
 	// https://stackoverflow.com/questions/2745074/fast-ceiling-of-an-integer-division-in-c-c
 	unsigned long total_bits = n_attributes + n_bits_for_classes;
-	unsigned long n_cols = total_bits / n_bits_in_a_long + (total_bits % n_bits_in_a_long != 0);
+	unsigned long n_cols = total_bits / LONG_BITS + (total_bits % LONG_BITS != 0);
 
 	dataset_dimensions[0] = n_observations;
 	dataset_dimensions[1] = n_cols;

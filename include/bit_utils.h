@@ -13,11 +13,8 @@
 /**
  * How many bits in a long?
  */
-unsigned int get_number_of_bits_in_a_long();
+#define LONG_BITS (CHAR_BIT * sizeof (unsigned long))
 
-/**
- *
- */
-int get_nth_bit(int x, int n);
+#define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
 
 #endif

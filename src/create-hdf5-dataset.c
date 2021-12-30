@@ -210,15 +210,13 @@ void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes, int 
 	// How many bits are needed to store the class?
 	int class_bits_to_set = (int) ceil(log2(n_classes));
 
-	unsigned int n_bits_in_a_long = get_number_of_bits_in_a_long();
-
 	unsigned long column = 0;
 
 	for (unsigned long i = 0; i < n_cols; i++) {
 
 		buffer[i] = 0;
 
-		for (size_t j = 0; j < n_bits_in_a_long; j++) {
+		for (size_t j = 0; j < LONG_BITS; j++) {
 
 			buffer[i] <<= 1;
 
@@ -232,12 +230,12 @@ void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes, int 
 				if (class_bits_to_set > 0) {
 					class_bits_to_set--;
 
-					if (get_nth_bit(line_class, class_bits_to_set) == 1) {
+					if (CHECK_BIT(line_class, class_bits_to_set) == 1) {
 						buffer[i] |= 1;
 					}
 				} else {
 					// We're done here: fast forward!
-					buffer[i] <<= (n_bits_in_a_long - 1 - j);
+					buffer[i] <<= (LONG_BITS - 1 - j);
 					break;
 				}
 			}
