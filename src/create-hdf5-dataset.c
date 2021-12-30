@@ -17,7 +17,6 @@
 
 /**
  * Fills the buffer with a random line of 0 and 1
- * TODO: Support more than 2 classes
  */
 void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes, int probability_attribute_set,
 		unsigned long *buffer);
@@ -226,7 +225,7 @@ void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes, int 
 			if (column < n_attributes) {
 				// Filling in attributes
 				if (rand() < probability) {
-					buffer[i] += 1;
+					buffer[i] |= 1;
 				}
 			} else {
 				// Filling in the class
@@ -234,7 +233,7 @@ void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes, int 
 					class_bits_to_set--;
 
 					if (get_nth_bit(line_class, class_bits_to_set) == 1) {
-						buffer[i] += 1;
+						buffer[i] |= 1;
 					}
 				} else {
 					// We're done here: fast forward!
