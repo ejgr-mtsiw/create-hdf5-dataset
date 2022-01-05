@@ -12,8 +12,8 @@
  * Calculates the dataset dimensions based on the number
  * of observations and attributes
  */
-int calculate_dataset_dimensions(unsigned long n_observations, unsigned long n_attributes, int n_classes,
-		hsize_t *dataset_dimensions) {
+int calculate_dataset_dimensions(unsigned long n_observations,
+		unsigned long n_attributes, int n_classes, hsize_t *dataset_dimensions) {
 
 	// check for invalid dimensions
 	if (n_observations < 1 || n_attributes < 1) {
@@ -31,7 +31,8 @@ int calculate_dataset_dimensions(unsigned long n_observations, unsigned long n_a
 	 */
 	// https://stackoverflow.com/questions/2745074/fast-ceiling-of-an-integer-division-in-c-c
 	unsigned long total_bits = n_attributes + n_bits_for_classes;
-	unsigned long n_cols = total_bits / LONG_BITS + (total_bits % LONG_BITS != 0);
+	unsigned long n_cols = total_bits / LONG_BITS
+			+ (total_bits % LONG_BITS != 0);
 
 	dataset_dimensions[0] = n_observations;
 	dataset_dimensions[1] = n_cols;
@@ -42,9 +43,11 @@ int calculate_dataset_dimensions(unsigned long n_observations, unsigned long n_a
 /**
  * Writes an attribute to the dataset
  */
-herr_t write_attribute(hid_t dataset_id, const char *attribute, hid_t datatype, const void *value) {
+herr_t write_attribute(hid_t dataset_id, const char *attribute, hid_t datatype,
+		const void *value) {
 	hid_t attr_dataspace = H5Screate(H5S_SCALAR);
-	hid_t attr = H5Acreate2(dataset_id, attribute, datatype, attr_dataspace, H5P_DEFAULT, H5P_DEFAULT);
+	hid_t attr = H5Acreate2(dataset_id, attribute, datatype, attr_dataspace,
+			H5P_DEFAULT, H5P_DEFAULT);
 
 	// Write the attribute to the dataset
 	herr_t status = H5Awrite(attr, datatype, value);

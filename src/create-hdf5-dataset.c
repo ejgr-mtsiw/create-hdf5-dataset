@@ -18,8 +18,8 @@
 /**
  * Fills the buffer with a random line of 0 and 1
  */
-void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes, int probability_attribute_set,
-		unsigned long *buffer);
+void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes,
+		int probability_attribute_set, unsigned long *buffer);
 
 /**
  *
@@ -98,8 +98,8 @@ int main(int argc, char **argv) {
 	}
 	fprintf(stdout, " - Empty file created.\n");
 
-	if (calculate_dataset_dimensions(args.n_observations, args.n_attributes, args.n_classes,
-			dataset_dimensions) == DATASET_INVALID_DIMENSIONS) {
+	if (calculate_dataset_dimensions(args.n_observations, args.n_attributes,
+			args.n_classes, dataset_dimensions) == DATASET_INVALID_DIMENSIONS) {
 		// Invalid dimensions
 		fprintf(stdout, " - Invalid dataset dimensions!\n");
 		return EXIT_FAILURE;
@@ -126,8 +126,9 @@ int main(int argc, char **argv) {
 	}
 
 	// Create the dataset
-	dataset_id = H5Dcreate2(file_id, args.datasetname, H5T_STD_U64BE, dataset_space_id, H5P_DEFAULT, property_list_id,
-	H5P_DEFAULT);
+	dataset_id = H5Dcreate2(file_id, args.datasetname, H5T_STD_U64BE,
+			dataset_space_id, H5P_DEFAULT, property_list_id,
+			H5P_DEFAULT);
 	fprintf(stdout, " - Dataset created.\n");
 	fprintf(stdout, " - Starting filling in dataset.\n");
 
@@ -138,7 +139,8 @@ int main(int argc, char **argv) {
 	memory_space_id = H5Screate_simple(2, chunk_dimensions, NULL);
 
 	// Alocate buffer
-	buffer = (unsigned long*) malloc(sizeof(unsigned long) * chunk_dimensions[1]);
+	buffer = (unsigned long*) malloc(
+			sizeof(unsigned long) * chunk_dimensions[1]);
 
 	// We will write one line at a time
 	hsize_t count[2] = { 1, chunk_dimensions[1] };
@@ -150,17 +152,21 @@ int main(int argc, char **argv) {
 		offset[0] = line;
 
 		// Select hyperslab on file dataset
-		H5Sselect_hyperslab(dataset_space_id, H5S_SELECT_SET, offset, NULL, count, NULL);
+		H5Sselect_hyperslab(dataset_space_id, H5S_SELECT_SET, offset, NULL,
+				count, NULL);
 
 		// Create a data line
-		fill_buffer(chunk_dimensions[1], args.n_attributes, args.n_classes, args.probability_attribute_set, buffer);
+		fill_buffer(chunk_dimensions[1], args.n_attributes, args.n_classes,
+				args.probability_attribute_set, buffer);
 
 		// Write buffer to dataset
 		// mem_space and file_space should now have the same number of elements selected
-		H5Dwrite(dataset_id, H5T_NATIVE_ULONG, memory_space_id, dataset_space_id, H5P_DEFAULT, buffer);
+		H5Dwrite(dataset_id, H5T_NATIVE_ULONG, memory_space_id,
+				dataset_space_id, H5P_DEFAULT, buffer);
 
 		if (line % 100 == 0) {
-			fprintf(stdout, " - Writing [%lu/%lu]\n", line, args.n_observations);
+			fprintf(stdout, " - Writing [%lu/%lu]\n", line,
+					args.n_observations);
 		}
 	}
 
@@ -170,17 +176,20 @@ int main(int argc, char **argv) {
 
 	// Set dataset properties
 
-	status = write_attribute(dataset_id, "n_classes", H5T_NATIVE_INT, &args.n_classes);
+	status = write_attribute(dataset_id, "n_classes", H5T_NATIVE_INT,
+			&args.n_classes);
 	if (status < 0) {
 		return EXIT_FAILURE;
 	}
 
-	status = write_attribute(dataset_id, "n_attributes", H5T_NATIVE_ULONG, &args.n_attributes);
+	status = write_attribute(dataset_id, "n_attributes", H5T_NATIVE_ULONG,
+			&args.n_attributes);
 	if (status < 0) {
 		return EXIT_FAILURE;
 	}
 
-	status = write_attribute(dataset_id, "n_observations", H5T_NATIVE_ULONG, &args.n_observations);
+	status = write_attribute(dataset_id, "n_observations", H5T_NATIVE_ULONG,
+			&args.n_observations);
 	if (status < 0) {
 		return EXIT_FAILURE;
 	}
@@ -196,8 +205,8 @@ int main(int argc, char **argv) {
 /**
  * Fills the buffer with a random line of 0 and 1
  */
-void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes, int probability_attribute_set,
-		unsigned long *buffer) {
+void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes,
+		int probability_attribute_set, unsigned long *buffer) {
 	/**
 	 * Probability of getting '1'
 	 * TODO: replace placeholder code
