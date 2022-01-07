@@ -32,6 +32,9 @@ int read_args(int argc, char **argv, clargs *args) {
 			idata = atoi(optarg);
 			if (idata > 2) {
 				args->n_classes = idata;
+			} else {
+				fprintf(stderr, "The number of classes must be >= 2.\n");
+				return READ_CL_ARGS_NOK;
 			}
 			break;
 		case 'a':
@@ -46,6 +49,9 @@ int read_args(int argc, char **argv, clargs *args) {
 			idata = atoi(optarg);
 			if (idata >= 0 && idata <= 100) {
 				args->probability_attribute_set = idata;
+			} else {
+				fprintf(stderr, "The probability must be between 0 and 100.\n");
+				return READ_CL_ARGS_NOK;
 			}
 			break;
 		case 'z':
@@ -86,7 +92,8 @@ int read_args(int argc, char **argv, clargs *args) {
 		fprintf(stdout, "-a n_attributes Default: 1000000\n");
 		fprintf(stdout, "-o n_observations Default: 2000\n");
 		fprintf(stdout, "-p probability_attribute_set Default: 26\n");
-		fprintf(stdout, "-z compress_dataset_level Default: 6, 0 disables compression\n");
+		fprintf(stdout,
+				"-z compress_dataset_level Default: 6, 0 disables compression\n");
 		return READ_CL_ARGS_NOK;
 	}
 
