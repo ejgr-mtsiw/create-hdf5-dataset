@@ -30,7 +30,7 @@ int read_args(int argc, char **argv, clargs *args) {
 			break;
 		case 'c':
 			idata = atoi(optarg);
-			if (idata > 2) {
+			if (idata >= 2) {
 				args->n_classes = idata;
 			} else {
 				fprintf(stderr, "The number of classes must be >= 2.\n");
