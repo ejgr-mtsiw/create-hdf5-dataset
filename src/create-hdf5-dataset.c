@@ -18,8 +18,9 @@
 /**
  * Fills the buffer with a random line of 0 and 1
  */
-void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes,
-		int probability_attribute_set, unsigned long *buffer);
+void fill_buffer(hsize_t n_longs, unsigned int n_attributes,
+		unsigned int n_classes, unsigned char probability_attribute_set,
+		unsigned long *buffer);
 
 /**
  *
@@ -126,7 +127,7 @@ int main(int argc, char **argv) {
 	}
 
 	// Create the dataset
-	dataset_id = H5Dcreate2(file_id, args.datasetname, H5T_STD_U64BE,
+	dataset_id = H5Dcreate2(file_id, args.datasetname, H5T_NATIVE_ULONG,
 			dataset_space_id, H5P_DEFAULT, property_list_id,
 			H5P_DEFAULT);
 	fprintf(stdout, " - Dataset created.\n");
@@ -165,7 +166,7 @@ int main(int argc, char **argv) {
 				dataset_space_id, H5P_DEFAULT, buffer);
 
 		if (line % 100 == 0) {
-			fprintf(stdout, " - Writing [%lu/%lu]\n", line,
+			fprintf(stdout, " - Writing [%lu/%d]\n", line,
 					args.n_observations);
 		}
 	}
@@ -182,13 +183,13 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
-	status = write_attribute(dataset_id, "n_attributes", H5T_NATIVE_ULONG,
+	status = write_attribute(dataset_id, "n_attributes", H5T_NATIVE_INT,
 			&args.n_attributes);
 	if (status < 0) {
 		return EXIT_FAILURE;
 	}
 
-	status = write_attribute(dataset_id, "n_observations", H5T_NATIVE_ULONG,
+	status = write_attribute(dataset_id, "n_observations", H5T_NATIVE_INT,
 			&args.n_observations);
 	if (status < 0) {
 		return EXIT_FAILURE;
@@ -205,31 +206,29 @@ int main(int argc, char **argv) {
 /**
  * Fills the buffer with a random line of 0 and 1
  */
-void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes,
-		int probability_attribute_set, unsigned long *buffer) {
+void fill_buffer(hsize_t n_longs, unsigned int n_attributes,
+		unsigned int n_classes, unsigned char probability_attribute_set,
+		unsigned long *buffer) {
 	/**
-	 * Probability of getting '1'
-	 * TODO: replace placeholder code
+	 * Probability of attribute being set to '1'
 	 */
 	int probability = RAND_MAX / 100 * probability_attribute_set;
 
 	// What class will this line be?
-	int line_class = rand() % n_classes;
+	unsigned int line_class = rand() % n_classes;
 
 	// How many bits are needed to store the class?
-	int class_bits_to_set = (int) ceil(log2(n_classes));
+	unsigned int class_bits_to_set = (int) ceil(log2(n_classes));
 
-	unsigned long column = 0;
-
-	for (unsigned long i = 0; i < n_cols; i++) {
+	for (unsigned int i = 0; i < n_longs; i++) {
 
 		buffer[i] = 0;
 
-		for (size_t j = 0; j < LONG_BITS; j++) {
+		for (size_t bit = 0; bit < LONG_BITS; bit++) {
 
 			buffer[i] <<= 1;
 
-			if (column < n_attributes) {
+			if (bit < n_attributes) {
 				// Filling in attributes
 				if (rand() < probability) {
 					buffer[i] |= 1;
@@ -239,17 +238,16 @@ void fill_buffer(hsize_t n_cols, unsigned long n_attributes, int n_classes,
 				if (class_bits_to_set > 0) {
 					class_bits_to_set--;
 
-					if (CHECK_BIT(line_class, class_bits_to_set) == 1) {
+					if (CHECK_BIT(line_class, class_bits_to_set)) {
 						buffer[i] |= 1;
 					}
 				} else {
 					// We're done here: fast forward!
-					buffer[i] <<= (LONG_BITS - 1 - j);
+					// Fill remaining bits with 0
+					buffer[i] <<= (LONG_BITS - 1 - bit);
 					break;
 				}
 			}
-
-			column++;
 		}
 	}
 }

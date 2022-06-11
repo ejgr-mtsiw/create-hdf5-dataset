@@ -68,17 +68,17 @@ typedef struct clargs {
 	/**
 	 * Number of classes to generate
 	 */
-	int n_classes;
+	unsigned int n_classes;
 
 	/**
 	 * Number of attributes (columns) to generate.
 	 */
-	unsigned long n_attributes;
+	unsigned int n_attributes;
 
 	/**
 	 * Number of observations (lines) to generate.
 	 */
-	unsigned long n_observations;
+	unsigned int n_observations;
 
 	/**
 	 * Probability that an attribute is set to '1'

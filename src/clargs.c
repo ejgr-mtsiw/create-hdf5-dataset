@@ -5,8 +5,8 @@
  * them in the args structure
  */
 int read_args(int argc, char **argv, clargs *args) {
-	int c = 0, idata = 0;
-	unsigned long uidata = 0;
+	int c = 0;
+	unsigned int idata = 0;
 
 	opterr = 0;
 
@@ -29,7 +29,7 @@ int read_args(int argc, char **argv, clargs *args) {
 			args->datasetname = optarg;
 			break;
 		case 'c':
-			idata = atoi(optarg);
+			idata = strtoul(optarg, NULL, 10);
 			if (idata >= 2) {
 				args->n_classes = idata;
 			} else {
@@ -38,15 +38,15 @@ int read_args(int argc, char **argv, clargs *args) {
 			}
 			break;
 		case 'a':
-			uidata = strtoul(optarg, NULL, 10);
-			args->n_attributes = uidata;
+			idata = strtoul(optarg, NULL, 10);
+			args->n_attributes = idata;
 			break;
 		case 'o':
-			uidata = strtoul(optarg, NULL, 10);
-			args->n_observations = uidata;
+			idata = strtoul(optarg, NULL, 10);
+			args->n_observations = idata;
 			break;
 		case 'p':
-			idata = atoi(optarg);
+			idata = strtoul(optarg, NULL, 10);
 			if (idata >= 0 && idata <= 100) {
 				args->probability_attribute_set = idata;
 			} else {
@@ -55,7 +55,7 @@ int read_args(int argc, char **argv, clargs *args) {
 			}
 			break;
 		case 'z':
-			idata = atoi(optarg);
+			idata = strtoul(optarg, NULL, 10);
 			if (idata > 0 && idata < 10) {
 				args->compress_dataset = USE_COMPRESSION;
 				args->compression_level = idata;
