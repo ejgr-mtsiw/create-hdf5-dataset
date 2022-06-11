@@ -166,8 +166,7 @@ int main(int argc, char **argv) {
 				dataset_space_id, H5P_DEFAULT, buffer);
 
 		if (line % 100 == 0) {
-			fprintf(stdout, " - Writing [%lu/%d]\n", line,
-					args.n_observations);
+			fprintf(stdout, " - Writing [%lu/%d]\n", line, args.n_observations);
 		}
 	}
 
@@ -177,19 +176,19 @@ int main(int argc, char **argv) {
 
 	// Set dataset properties
 
-	status = write_attribute(dataset_id, "n_classes", H5T_NATIVE_INT,
+	status = write_attribute(dataset_id, "n_classes", H5T_NATIVE_UINT,
 			&args.n_classes);
 	if (status < 0) {
 		return EXIT_FAILURE;
 	}
 
-	status = write_attribute(dataset_id, "n_attributes", H5T_NATIVE_INT,
+	status = write_attribute(dataset_id, "n_attributes", H5T_NATIVE_UINT,
 			&args.n_attributes);
 	if (status < 0) {
 		return EXIT_FAILURE;
 	}
 
-	status = write_attribute(dataset_id, "n_observations", H5T_NATIVE_INT,
+	status = write_attribute(dataset_id, "n_observations", H5T_NATIVE_UINT,
 			&args.n_observations);
 	if (status < 0) {
 		return EXIT_FAILURE;
@@ -220,6 +219,9 @@ void fill_buffer(hsize_t n_longs, unsigned int n_attributes,
 	// How many bits are needed to store the class?
 	unsigned int class_bits_to_set = (int) ceil(log2(n_classes));
 
+	// Current column
+	unsigned int column = 0;
+
 	for (unsigned int i = 0; i < n_longs; i++) {
 
 		buffer[i] = 0;
@@ -228,7 +230,7 @@ void fill_buffer(hsize_t n_longs, unsigned int n_attributes,
 
 			buffer[i] <<= 1;
 
-			if (bit < n_attributes) {
+			if (column < n_attributes) {
 				// Filling in attributes
 				if (rand() < probability) {
 					buffer[i] |= 1;
@@ -248,6 +250,7 @@ void fill_buffer(hsize_t n_longs, unsigned int n_attributes,
 					break;
 				}
 			}
+			column++;
 		}
 	}
 }
