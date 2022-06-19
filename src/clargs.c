@@ -47,7 +47,7 @@ int read_args(int argc, char **argv, clargs *args) {
 			break;
 		case 'p':
 			idata = strtoul(optarg, NULL, 10);
-			if (idata >= 0 && idata <= 100) {
+			if (idata <= 100) {
 				args->probability_attribute_set = idata;
 			} else {
 				fprintf(stderr, "The probability must be between 0 and 100.\n");
