@@ -127,9 +127,8 @@ int main(int argc, char **argv) {
 	}
 
 	// Create the dataset
-	dataset_id = H5Dcreate2(file_id, args.datasetname, H5T_NATIVE_ULONG,
-			dataset_space_id, H5P_DEFAULT, property_list_id,
-			H5P_DEFAULT);
+	dataset_id = H5Dcreate2(file_id, args.datasetname, H5T_STD_U64LE,
+			dataset_space_id, H5P_DEFAULT, property_list_id, H5P_DEFAULT);
 	fprintf(stdout, " - Dataset created.\n");
 	fprintf(stdout, " - Starting filling in dataset.\n");
 
