@@ -6,76 +6,39 @@
  ============================================================================
  */
 
-#include "bit_utils.h"
-#include "clargs.h"
 #include "dataset.h"
+#include "dataset_hdf5.h"
+#include "types/word_t.h"
+#include "utils/bit.h"
+#include "utils/clargs.h"
+
+#include "hdf5.h"
+
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "hdf5.h"
-#include <math.h>
+#include <string.h>
 #include <time.h>
-
-/**
- * Fills the buffer with a random line of 0 and 1
- */
-void fill_buffer(hsize_t n_longs, unsigned int n_attributes,
-		unsigned int n_classes, unsigned char probability_attribute_set,
-		unsigned long *buffer);
 
 /**
  *
  */
-int main(int argc, char **argv) {
+int main(int argc, char** argv)
+{
 
 	/**
 	 * Command line arguments set by the user
 	 */
-	clargs args;
+	clargs_t args;
 
-	/**
-	 * File identifier
-	 */
-	hid_t file_id = 0;
+	dataset_hdf5_t hdf5_dataset;
 
-	/**
-	 * Dataset identifier
-	 */
-	hid_t dataset_id = 0;
-
-	/**
-	 * Dataset dataspace identifier
-	 */
-	hid_t dataset_space_id = 0;
-
-	/**
-	 * Dataset creation property list identifier
-	 */
-	hid_t property_list_id = 0;
-
-	/**
-	 * In memory dataspace identifier
-	 */
-	hid_t memory_space_id = 0;
-
-	/**
-	 * Store the result of operations
-	 */
-	herr_t status = 0;
-
-	/**
-	 * Dataset dimensions
-	 */
-	hsize_t dataset_dimensions[2] = { 0, 0 };
-
-	/**
-	 * Chunk dimensions
-	 */
-	hsize_t chunk_dimensions[2] = { 0, 0 };
+	dataset_t dataset;
 
 	/**
 	 * Buffer to store one line/chunk of data
 	 */
-	unsigned long *buffer = NULL;
+	word_t* buffer = NULL;
 
 	// Seed the random number generator
 	// TODO: we could read the seed from the command line?
@@ -91,165 +54,108 @@ int main(int argc, char **argv) {
 	/**
 	 * Create the data file
 	 */
-	file_id = H5Fcreate(args.filename, H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT);
-	if (file_id < 1) {
+	hdf5_dataset.file_id
+		= H5Fcreate(args.filename, H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT);
+	if (hdf5_dataset.file_id < 1) {
 		// Error creating file
 		fprintf(stdout, "Error creating %s\n", args.filename);
 		return EXIT_FAILURE;
 	}
 	fprintf(stdout, " - Empty file created.\n");
 
-	if (calculate_dataset_dimensions(args.n_observations, args.n_attributes,
-			args.n_classes, dataset_dimensions) == DATASET_INVALID_DIMENSIONS) {
-		// Invalid dimensions
-		fprintf(stdout, " - Invalid dataset dimensions!\n");
-		return EXIT_FAILURE;
-	}
+	// Store data
+	dataset.n_classes = args.n_classes;
+	dataset.n_attributes = args.n_attributes;
+	dataset.n_observations = args.n_observations;
+	dataset.n_bits_for_class = (uint8_t) ceil(log2(dataset.n_classes));
+	dataset.n_bits_for_jnsqs = 0;
 
-	dataset_space_id = H5Screate_simple(2, dataset_dimensions, NULL);
-	fprintf(stdout, " - Dataspace created.\n");
+	uint32_t total_bits = dataset.n_attributes + dataset.n_bits_for_class;
+	uint32_t n_words = total_bits / WORD_BITS + (total_bits % WORD_BITS != 0);
 
-	// Create a dataset creation property list
-	property_list_id = H5Pcreate(H5P_DATASET_CREATE);
-	H5Pset_layout(property_list_id, H5D_CHUNKED);
+	dataset.n_words = n_words;
 
-	// The choice of the chunk size affects performance!
-	// for now we will choose one line
-	chunk_dimensions[0] = 1;
-	chunk_dimensions[1] = dataset_dimensions[1];
-
-	H5Pset_chunk(property_list_id, 2, chunk_dimensions);
-	fprintf(stdout, " - Property list created.\n");
-
-	if (args.compress_dataset == USE_COMPRESSION) {
-		// Set ZLIB / DEFLATE Compression.
-		H5Pset_deflate(property_list_id, args.compression_level);
-	}
-
-	// Create the dataset
-	dataset_id = H5Dcreate2(file_id, args.datasetname, H5T_STD_U64LE,
-			dataset_space_id, H5P_DEFAULT, property_list_id, H5P_DEFAULT);
-	fprintf(stdout, " - Dataset created.\n");
-	fprintf(stdout, " - Starting filling in dataset.\n");
-
-	// Close resources
-	H5Pclose(property_list_id);
-
-	// Create a memory dataspace to indicate the size of our buffer/chunk
-	memory_space_id = H5Screate_simple(2, chunk_dimensions, NULL);
-
-	// Alocate buffer
-	buffer = (unsigned long*) malloc(
-			sizeof(unsigned long) * chunk_dimensions[1]);
-
-	// We will write one line at a time
-	hsize_t count[2] = { 1, chunk_dimensions[1] };
-	hsize_t offset[2] = { 0, 0 };
-
-	for (unsigned long line = 0; line < args.n_observations; line++) {
-
-		// Update offset
-		offset[0] = line;
-
-		// Select hyperslab on file dataset
-		H5Sselect_hyperslab(dataset_space_id, H5S_SELECT_SET, offset, NULL,
-				count, NULL);
-
-		// Create a data line
-		fill_buffer(chunk_dimensions[1], args.n_attributes, args.n_classes,
-				args.probability_attribute_set, buffer);
-
-		// Write buffer to dataset
-		// mem_space and file_space should now have the same number of elements selected
-		H5Dwrite(dataset_id, H5T_NATIVE_ULONG, memory_space_id,
-				dataset_space_id, H5P_DEFAULT, buffer);
-
-		if (line % 100 == 0) {
-			fprintf(stdout, " - Writing [%lu/%d]\n", line, args.n_observations);
-		}
-	}
-
-	free(buffer);
-	H5Sclose(memory_space_id);
-	H5Sclose(dataset_space_id);
+	hdf5_dataset.dataset_id = hdf5_create_dataset(
+		hdf5_dataset.file_id, args.datasetname, dataset.n_observations,
+		dataset.n_words, H5T_NATIVE_UINT64);
+	hdf5_dataset.dimensions[0] = dataset.n_observations;
+	hdf5_dataset.dimensions[1] = dataset.n_words;
 
 	// Set dataset properties
 
-	status = write_attribute(dataset_id, "n_classes", H5T_NATIVE_UINT,
-			&args.n_classes);
-	if (status < 0) {
-		return EXIT_FAILURE;
+	hdf5_write_attribute(hdf5_dataset.dataset_id, "n_classes",
+						 H5T_NATIVE_UINT64, &args.n_classes);
+	hdf5_write_attribute(hdf5_dataset.dataset_id, "n_attributes",
+						 H5T_NATIVE_UINT64, &args.n_attributes);
+	hdf5_write_attribute(hdf5_dataset.dataset_id, "n_observations",
+						 H5T_NATIVE_UINT64, &args.n_observations);
+
+	// Fill data
+
+	fprintf(stdout, " - Starting filling in dataset.\n");
+
+	// Alocate buffer
+	buffer = (unsigned long*) malloc(sizeof(unsigned long) * dataset.n_words);
+
+	for (unsigned long line = 0; line < args.n_observations; line++) {
+
+		fill_buffer(&dataset, args.probability_attribute_set, buffer);
+		hdf5_write_n_lines(hdf5_dataset.dataset_id, line, 1, dataset.n_words,
+						   H5T_NATIVE_UINT64, buffer);
+
+		if (line % 100 == 0) {
+			fprintf(stdout, " - Writing [%lu/%lu]\n", line,
+					args.n_observations);
+		}
 	}
 
-	status = write_attribute(dataset_id, "n_attributes", H5T_NATIVE_UINT,
-			&args.n_attributes);
-	if (status < 0) {
-		return EXIT_FAILURE;
+	// Add inconsistencies
+	for (unsigned long i = 0; i < args.n_inconsistencies; i++) {
+		// Pick a random line
+		unsigned long from = rand() % args.n_observations;
+
+		hdf5_read_line(&hdf5_dataset, from, dataset.n_words, buffer);
+
+		// Get line class
+		unsigned long line_class
+			= get_class(buffer, dataset.n_attributes, dataset.n_words,
+						dataset.n_bits_for_class);
+
+		// Change its class
+		unsigned long new_class = 0;
+		do {
+			new_class = rand() % dataset.n_classes;
+		} while (new_class == line_class);
+
+		set_class_bits(buffer, new_class, dataset.n_attributes, dataset.n_words,
+					   dataset.n_bits_for_class);
+
+		// Put it back somewhere else
+		unsigned long to = rand() % args.n_observations;
+
+		hdf5_write_n_lines(hdf5_dataset.dataset_id, to, 1, dataset.n_words,
+						   H5T_NATIVE_UINT64, buffer);
 	}
 
-	status = write_attribute(dataset_id, "n_observations", H5T_NATIVE_UINT,
-			&args.n_observations);
-	if (status < 0) {
-		return EXIT_FAILURE;
+	// Add duplicates
+	for (unsigned long i = 0; i < args.n_duplicates; i++) {
+		// Pick a random line
+		unsigned long from = rand() % args.n_observations;
+
+		hdf5_read_line(&hdf5_dataset, from, dataset.n_words, buffer);
+
+		// Put it back somewhere else
+		unsigned long to = rand() % args.n_observations;
+
+		hdf5_write_n_lines(hdf5_dataset.dataset_id, to, 1, dataset.n_words,
+						   H5T_NATIVE_UINT64, buffer);
 	}
 
-	H5Dclose(dataset_id);
-	H5Fclose(file_id);
+	free(buffer);
+
+	hdf5_close_dataset(&hdf5_dataset);
 
 	fprintf(stdout, "All done!\n");
 
 	return EXIT_SUCCESS;
-}
-
-/**
- * Fills the buffer with a random line of 0 and 1
- */
-void fill_buffer(hsize_t n_longs, unsigned int n_attributes,
-		unsigned int n_classes, unsigned char probability_attribute_set,
-		unsigned long *buffer) {
-	/**
-	 * Probability of attribute being set to '1'
-	 */
-	int probability = RAND_MAX / 100 * probability_attribute_set;
-
-	// What class will this line be?
-	unsigned int line_class = rand() % n_classes;
-
-	// How many bits are needed to store the class?
-	unsigned int class_bits_to_set = (int) ceil(log2(n_classes));
-
-	// Current column
-	unsigned int column = 0;
-
-	for (unsigned int i = 0; i < n_longs; i++) {
-
-		buffer[i] = 0;
-
-		for (size_t bit = 0; bit < LONG_BITS; bit++) {
-
-			buffer[i] <<= 1;
-
-			if (column < n_attributes) {
-				// Filling in attributes
-				if (rand() < probability) {
-					buffer[i] |= 1;
-				}
-			} else {
-				// Filling in the class
-				if (class_bits_to_set > 0) {
-					class_bits_to_set--;
-
-					if (CHECK_BIT(line_class, class_bits_to_set)) {
-						buffer[i] |= 1;
-					}
-				} else {
-					// We're done here: fast forward!
-					// Fill remaining bits with 0
-					buffer[i] <<= (LONG_BITS - 1 - bit);
-					break;
-				}
-			}
-			column++;
-		}
-	}
 }
