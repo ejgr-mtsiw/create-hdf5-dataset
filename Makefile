@@ -1,15 +1,16 @@
-CC			:= clang
+CC				:= h5cc
 CPPFLAGS		:= -Wall -Wextra -Werror -pedantic-errors
-LDFLAGS			:= -L/usr/lib -L/usr/local/lib -lm -lhdf5
+LDFLAGS			:= -lm
 BUILD			:= ./bin
 OBJ_DIR			:= $(BUILD)/objects
 APP_DIR			:= $(BUILD)
 TARGET			:= create-hdf5-dataset
-INCLUDE			:= -Iinclude/ -I/usr/local/include/
-SRC			:= $(wildcard src/*.c)
+INCLUDE			:= -I./src
+SRC_DIRS		:= ./src
+SRC				:= $(shell find $(SRC_DIRS) -name *.c)
 
 OBJECTS			:= $(SRC:%.c=$(OBJ_DIR)/%.o)
-DEPENDENCIES		:= $(OBJECTS:.o=.d)
+DEPENDENCIES	:= $(OBJECTS:.o=.d)
 
 all: build $(APP_DIR)/$(TARGET)
 
@@ -32,7 +33,7 @@ build:
 debug: CPPFLAGS += -DDEBUG -g
 debug: all
 
-release: CPPFLAGS += -O2
+release: CPPFLAGS += -O3 -march=native 
 release: all
 
 clean:
