@@ -243,8 +243,8 @@ void fill_buffer(dataset_t* dataset, unsigned char probability_attribute_set,
 	memset(buffer, 0, dataset->n_words * sizeof(word_t));
 
 	// Fill full words
-	word_t mask = 1;
 	for (unsigned long i = 0; i < n_full_words; i++) {
+		word_t mask = 1;
 		for (unsigned int bit = 0; bit < WORD_BITS; bit++) {
 			int r = rand();
 			if (r < probability) {
@@ -254,7 +254,7 @@ void fill_buffer(dataset_t* dataset, unsigned char probability_attribute_set,
 		}
 	}
 
-	mask = 0x8000000000000000;
+	word_t mask = AND_MASK_TABLE[63];
 	// Fill remaining bits on last long
 	for (unsigned int bit = 0; bit < n_bits_on_last_word; bit++) {
 		int r = rand();
