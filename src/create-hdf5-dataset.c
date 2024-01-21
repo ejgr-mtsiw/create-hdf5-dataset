@@ -40,9 +40,17 @@ int main(int argc, char** argv)
 	 */
 	word_t* buffer = NULL;
 
+	struct timespec tick;
+	clock_gettime(CLOCK_MONOTONIC_RAW, &tick);
+
+	unsigned int seed = (unsigned int) tick.tv_nsec;
+
 	// Seed the random number generator
 	// TODO: we could read the seed from the command line?
-	srand((unsigned) time(NULL));
+	srand(seed);
+
+	// https://stackoverflow.com/questions/7866754/why-does-rand-7-always-return-0
+	rand();
 
 	/**
 	 * Parse command line arguments

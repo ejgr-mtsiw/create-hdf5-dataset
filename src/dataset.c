@@ -228,7 +228,7 @@ void fill_buffer(dataset_t* dataset, unsigned char probability_attribute_set,
 	/**
 	 * Probability of attribute being set to '1'
 	 */
-	int probability = ((float) RAND_MAX / 100.0F) * probability_attribute_set;
+	unsigned int probability = ((float) RAND_MAX / 100.0F) * probability_attribute_set;
 
 	// What class will this line be?
 	unsigned int line_class = rand() % dataset->n_classes;
@@ -246,8 +246,8 @@ void fill_buffer(dataset_t* dataset, unsigned char probability_attribute_set,
 	for (unsigned long i = 0; i < n_full_words; i++) {
 		word_t mask = 1;
 		for (unsigned int bit = 0; bit < WORD_BITS; bit++) {
-			int r = rand();
-			if (r < probability) {
+			unsigned int r = rand();
+			if (r <= probability) {
 				buffer[i] |= mask;
 			}
 			mask <<= 1;
@@ -257,7 +257,7 @@ void fill_buffer(dataset_t* dataset, unsigned char probability_attribute_set,
 	word_t mask = AND_MASK_TABLE[63];
 	// Fill remaining bits on last long
 	for (unsigned int bit = 0; bit < n_bits_on_last_word; bit++) {
-		int r = rand();
+		unsigned int r = rand();
 		if (r < probability) {
 			buffer[n_full_words] |= mask;
 		}
